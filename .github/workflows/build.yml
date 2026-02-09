@@ -1,0 +1,67 @@
+name: Build PolaFlow Global Hacker EXE
+
+# 触发条件：推送到 main 分支，或手动点击 Run Workflow
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    # 1. 拉取代码
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    # 2. 配置 Python 环境
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11' # 推荐 3.10 或 3.11
+
+    # 3. 安装 PyInstaller
+    - name: Install Dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pyinstaller
+
+    # 4. 自动下载 FFmpeg (Windows版)
+    # 注意：这里从 gyan.dev 下载构建版，解压并提取 ffmpeg.exe 到根目录
+    - name: Download FFmpeg
+      shell: pwsh
+      run: |
+        Write-Host "Downloading FFmpeg..."
+        Invoke-WebRequest -Uri "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip" -OutFile "ffmpeg.zip"
+        Write-Host "Extracting FFmpeg..."
+        Expand-Archive ffmpeg.zip -DestinationPath ffmpeg_temp
+        $ffmpegPath = Get-ChildItem -Path ffmpeg_temp -Recurse -Filter "ffmpeg.exe" | Select-Object -First 1
+        Move-Item $ffmpegPath.FullName .
+        Write-Host "FFmpeg ready."
+
+    # 5. 自动下载 ExifTool (Windows版)
+    # 注意：ExifTool 官网下载包里通常是 "exiftool(-k).exe"，需要重命名为 "exiftool.exe"
+    - name: Download ExifTool
+      shell: pwsh
+      run: |
+        Write-Host "Downloading ExifTool..."
+        Invoke-WebRequest -Uri "https://exiftool.org/exiftool-12.77.zip" -OutFile "exiftool.zip"
+        Write-Host "Extracting ExifTool..."
+        Expand-Archive exiftool.zip -DestinationPath exiftool_temp
+        Move-Item "exiftool_temp/exiftool(-k).exe" "exiftool.exe"
+        Write-Host "ExifTool ready."
+
+    # 6. 执行 PyInstaller 打包
+    # 关键参数：--add-data 将两个 exe 封入内部；--icon 可选
+    - name: Build EXE with PyInstaller
+      run: |
+        pyinstaller --clean --onefile --console --name "PolaFlow_Global_Hacker_v22" --add-data "ffmpeg.exe;." --add-data "exiftool.exe;." main.py
+
+    # 7. 上传打包结果
+    # 打包好的文件会在 Actions 页面供您下载
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: PolaFlow_Tool_v22
+        path: dist/PolaFlow_Global_Hacker_v22.exe
