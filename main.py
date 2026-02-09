@@ -109,7 +109,7 @@ def get_ultimate_visual_chain():
     
     # 构建滤镜链
     return [
-        f"dctdnoiz=s={freq}:n=2",                              # 频域降噪 (破坏原始噪点指纹)
+        f"dctdnoiz=s={freq}:n=3",                              # 频域降噪 (破坏原始噪点指纹)
         "scale=iw:-1:flags=lanczos+accurate_rnd",              # 采样重算
         f"lenscorrection=k1={k1}:k2=0.001",                    # 几何重构
         f"chromashift=cbh={chroma}:crh={-chroma}:cbv={chroma}:crv={-chroma}", # 模拟光学瑕疵
