@@ -23,20 +23,19 @@ jobs:
         python -m pip install --upgrade pip
         pip install pyinstaller
 
-    # --- 修复点 1: 更换为 GitHub 官方托管的 BtbN FFmpeg (GPL 完整版) ---
-    # 解决了 gyan.dev 的反爬虫拦截问题，且包含 chromaberrap 所有滤镜
+    # --- 修复点 1: FFmpeg 改用 GitHub BtbN 源 (永久有效 + 完整滤镜) ---
     - name: Download FFmpeg (BtbN Full Version)
       shell: pwsh
       run: |
-        Write-Host "Downloading FFmpeg from BtbN (GitHub Releases)..."
-        # 使用 Master Latest GPL Shared 版本 (包含所有滤镜)
+        Write-Host "Downloading FFmpeg from BtbN (GitHub)..."
+        # 使用 Master Latest GPL Shared 版本 (包含 chromaberrap 等所有滤镜)
         $url = "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip"
         Invoke-WebRequest -Uri $url -OutFile "ffmpeg.zip"
         
         Write-Host "Extracting FFmpeg..."
         Expand-Archive ffmpeg.zip -DestinationPath ffmpeg_temp
         
-        # 智能查找：BtbN 的 exe 通常在 bin 文件夹里，使用递归查找确保找到
+        # 智能查找：递归寻找 ffmpeg.exe，不管解压后文件夹叫什么
         $ffmpegPath = Get-ChildItem -Path ffmpeg_temp -Recurse -Filter "ffmpeg.exe" | Select-Object -First 1
         
         if ($ffmpegPath) {
@@ -48,26 +47,36 @@ jobs:
             exit 1
         }
 
-    # --- 修复点 2: ExifTool 保持最新逻辑 ---
-    - name: Download ExifTool
+    # --- 修复点 2: ExifTool 改为自动抓取最新版 (永不 404) ---
+    - name: Download ExifTool (Auto-Scrape Latest)
       shell: pwsh
       run: |
-        Write-Host "Downloading ExifTool v13.xx..."
-        # 使用官方最新的 64位版本链接
-        Invoke-WebRequest -Uri "https://exiftool.org/exiftool-13.20_64.zip" -OutFile "exiftool.zip"
+        Write-Host "Detecting latest ExifTool version..."
+        # 访问官网首页，自动提取最新 zip 文件名
+        $web = Invoke-WebRequest "https://exiftool.org/" -UseBasicParsing
+        $link = $web.Links | Where-Object { $_.href -match "^exiftool-\d+\.\d+\.zip$" } | Select-Object -First 1
+        
+        if (-not $link) {
+            Write-Error "Could not detect ExifTool version from website!"
+            exit 1
+        }
+        
+        $downloadUrl = "https://exiftool.org/" + $link.href
+        Write-Host "Downloading latest version: $($link.href)"
+        
+        Invoke-WebRequest -Uri $downloadUrl -OutFile "exiftool.zip"
         
         Write-Host "Extracting ExifTool..."
         Expand-Archive exiftool.zip -DestinationPath exiftool_temp
         
-        # 智能查找 (-k) 版本并重命名
+        # 查找并重命名 (-k) 版本
         $exiftoolOriginal = Get-ChildItem -Path exiftool_temp -Recurse -Filter "exiftool(-k).exe" | Select-Object -First 1
         
         if ($exiftoolOriginal) {
-            Write-Host "Found ExifTool at: $($exiftoolOriginal.FullName)"
             Move-Item $exiftoolOriginal.FullName -Destination ".\exiftool.exe"
             Write-Host "ExifTool ready."
         } else {
-            Write-Error "ExifTool not found in zip!"
+            Write-Error "ExifTool executable not found!"
             exit 1
         }
 
