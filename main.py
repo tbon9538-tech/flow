@@ -112,7 +112,7 @@ def get_ultimate_visual_chain():
         f"dctdnoiz=s={freq}:n=2",                              # 频域降噪 (破坏原始噪点指纹)
         "scale=iw:-1:flags=lanczos+accurate_rnd",              # 采样重算
         f"lenscorrection=k1={k1}:k2=0.001",                    # 几何重构
-        f"chromaberrap=rh={chroma}:rv={chroma}:gh=0.3:gv=0.3", # 模拟光学瑕疵
+        f"chromashift=cbh={chroma}:crh={-chroma}:cbv={chroma}:crv={-chroma}", # 模拟光学瑕疵
         f"vignette='PI/4+{random.uniform(0.05, 0.1)}'",        # 边缘暗角 (改变直方图)
         f"rotate={rot}:fillcolor=black:ow=iw:oh=ih",           # 旋转破坏矩阵对齐
         f"noise=alls={noise}:allf=t+u",                        # 注入新指纹噪点
@@ -245,3 +245,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
