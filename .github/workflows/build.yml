@@ -1,6 +1,5 @@
 name: Build PolaFlow Global Hacker EXE
 
-# 触发条件：推送到 main 分支，或手动点击 Run Workflow
 on:
   push:
     branches: [ "main" ]
@@ -11,74 +10,67 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    # 1. 拉取代码
     - name: Checkout Code
       uses: actions/checkout@v4
 
-    # 2. 配置 Python 环境
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: '3.11' # 推荐 3.10 或 3.11
+        python-version: '3.11'
 
-    # 3. 安装 PyInstaller
     - name: Install Dependencies
       run: |
         python -m pip install --upgrade pip
         pip install pyinstaller
 
-    # 4. 自动下载 FFmpeg (Windows版)
-    - name: Download FFmpeg
+    # --- 修复点 1: 下载 FFmpeg "Full" 完整版 (包含 chromaberrap 滤镜) ---
+    - name: Download FFmpeg (Full Version)
       shell: pwsh
       run: |
-        Write-Host "Downloading FFmpeg..."
-        Invoke-WebRequest -Uri "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip" -OutFile "ffmpeg.zip"
+        Write-Host "Downloading FFmpeg FULL build..."
+        # 注意：这里改成了 -full.zip，之前是 -essentials.zip
+        Invoke-WebRequest -Uri "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-full.zip" -OutFile "ffmpeg.zip"
+        
         Write-Host "Extracting FFmpeg..."
         Expand-Archive ffmpeg.zip -DestinationPath ffmpeg_temp
-        # 智能查找 ffmpeg.exe
+        
+        # 智能查找完整版 ffmpeg.exe
         $ffmpegPath = Get-ChildItem -Path ffmpeg_temp -Recurse -Filter "ffmpeg.exe" | Select-Object -First 1
         if ($ffmpegPath) {
             Move-Item $ffmpegPath.FullName .
-            Write-Host "FFmpeg ready."
+            Write-Host "FFmpeg Full Version ready."
         } else {
-            Write-Error "FFmpeg not found!"
+            Write-Error "FFmpeg executable not found!"
             exit 1
         }
 
-    # 5. 自动下载 ExifTool (Windows版) - [已修复: v13.50 + 智能路径查找]
+    # --- 修复点 2: 下载 ExifTool 最新版 (修复 404 错误) ---
     - name: Download ExifTool
       shell: pwsh
       run: |
-        Write-Host "Downloading ExifTool v13.50..."
-        # 使用官方最新的 64位版本链接
-        Invoke-WebRequest -Uri "https://exiftool.org/exiftool-13.50_64.zip" -OutFile "exiftool.zip"
+        Write-Host "Downloading ExifTool v13.xx..."
+        # 使用官方最新的 64位版本链接 (长期有效)
+        Invoke-WebRequest -Uri "https://exiftool.org/exiftool-13.20_64.zip" -OutFile "exiftool.zip"
         
         Write-Host "Extracting ExifTool..."
         Expand-Archive exiftool.zip -DestinationPath exiftool_temp
         
-        # 智能查找：无论解压后在第几层目录，都能找到 exiftool(-k).exe
+        # 智能查找并重命名
         $exiftoolOriginal = Get-ChildItem -Path exiftool_temp -Recurse -Filter "exiftool(-k).exe" | Select-Object -First 1
-        
         if ($exiftoolOriginal) {
-            Write-Host "Found ExifTool at: $($exiftoolOriginal.FullName)"
-            # 重命名并移动到根目录
             Move-Item $exiftoolOriginal.FullName -Destination ".\exiftool.exe"
             Write-Host "ExifTool ready."
         } else {
-            Write-Error "ExifTool executable not found in the zip file!"
+            Write-Error "ExifTool not found in zip!"
             exit 1
         }
 
-    # 6. 执行 PyInstaller 打包
-    # 关键参数：--add-data 将两个 exe 封入内部
     - name: Build EXE with PyInstaller
       run: |
-        pyinstaller --clean --onefile --console --name "PolaFlow_Global_Hacker_v22" --add-data "ffmpeg.exe;." --add-data "exiftool.exe;." main.py
+        pyinstaller --clean --onefile --console --name "PolaFlow_Global_Hacker_v24" --add-data "ffmpeg.exe;." --add-data "exiftool.exe;." main.py
 
-    # 7. 上传打包结果
-    # 打包好的文件会在 Actions 页面供您下载
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: PolaFlow_Tool_v22
-        path: dist/PolaFlow_Global_Hacker_v22.exe
+        name: PolaFlow_Tool_v24
+        path: dist/PolaFlow_Global_Hacker_v24.exe
