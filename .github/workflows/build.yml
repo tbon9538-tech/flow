@@ -23,7 +23,7 @@ jobs:
         python -m pip install --upgrade pip
         pip install pyinstaller
 
-    # 1. FFmpeg (BtbN 完整版) - 保持这个，它已经成功了！
+    # 1. FFmpeg (BtbN 完整版) - 保持这个，它是成功的关键！
     - name: Download FFmpeg (BtbN Full Version)
       shell: pwsh
       run: |
@@ -45,25 +45,29 @@ jobs:
             exit 1
         }
 
-    # 2. ExifTool (改为 Chocolatey 安装) - 彻底解决超时/404问题
+    # 2. ExifTool (Chocolatey + 智能模糊查找) - 修复找不到文件的问题
     - name: Install ExifTool via Chocolatey
       shell: pwsh
       run: |
-        Write-Host "Installing ExifTool using Chocolatey (More Stable)..."
-        # 使用包管理器安装，不再依赖不稳定的官网直链
-        choco install exiftool -y --no-progress
+        Write-Host "Installing ExifTool using Chocolatey..."
+        # 强制安装，忽略校验和警告
+        choco install exiftool -y --no-progress --force --ignore-checksums
         
-        # 查找安装后的真实 exe 文件 (Choco 通常安装在 lib 目录下)
-        # 我们递归查找 exiftool(-k).exe，确保万无一失
-        $exiftoolPath = Get-ChildItem -Path "C:\ProgramData\chocolatey\lib" -Recurse -Filter "exiftool(-k).exe" | Select-Object -First 1
+        Write-Host "Searching for executable in Chocolatey lib..."
+        $chocoLib = "C:\ProgramData\chocolatey\lib"
         
-        if ($exiftoolPath) {
-            Write-Host "Found ExifTool at: $($exiftoolPath.FullName)"
-            # 复制并重命名为 exiftool.exe 到当前工作目录
-            Copy-Item $exiftoolPath.FullName -Destination ".\exiftool.exe"
+        # 关键修复：搜索 'exiftool*.exe' (包含 exiftool.exe 和 exiftool(-k).exe)
+        # 并按文件大小降序排列，确保取到的是主程序(大文件)而不是垫片(小文件)
+        $exiftoolBinary = Get-ChildItem -Path $chocoLib -Recurse -Filter "exiftool*.exe" | Sort-Object Length -Descending | Select-Object -First 1
+        
+        if ($exiftoolBinary) {
+            Write-Host "Found binary at: $($exiftoolBinary.FullName)"
+            # 复制并统一重命名为 exiftool.exe
+            Copy-Item $exiftoolBinary.FullName -Destination ".\exiftool.exe"
             Write-Host "ExifTool ready."
         } else {
-            Write-Error "Could not locate exiftool(-k).exe after Chocolatey install."
+            Write-Error "Could not locate any exiftool binary in $chocoLib. Listing directory for debug:"
+            Get-ChildItem -Path $chocoLib -Recurse | Select-Object FullName
             exit 1
         }
 
