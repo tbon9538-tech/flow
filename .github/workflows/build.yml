@@ -23,41 +23,47 @@ jobs:
         python -m pip install --upgrade pip
         pip install pyinstaller
 
-    # --- 修复点 1: 下载 FFmpeg "Full" 完整版 (包含 chromaberrap 滤镜) ---
-    - name: Download FFmpeg (Full Version)
+    # --- 修复点 1: 更换为 GitHub 官方托管的 BtbN FFmpeg (GPL 完整版) ---
+    # 解决了 gyan.dev 的反爬虫拦截问题，且包含 chromaberrap 所有滤镜
+    - name: Download FFmpeg (BtbN Full Version)
       shell: pwsh
       run: |
-        Write-Host "Downloading FFmpeg FULL build..."
-        # 注意：这里改成了 -full.zip，之前是 -essentials.zip
-        Invoke-WebRequest -Uri "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-full.zip" -OutFile "ffmpeg.zip"
+        Write-Host "Downloading FFmpeg from BtbN (GitHub Releases)..."
+        # 使用 Master Latest GPL Shared 版本 (包含所有滤镜)
+        $url = "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip"
+        Invoke-WebRequest -Uri $url -OutFile "ffmpeg.zip"
         
         Write-Host "Extracting FFmpeg..."
         Expand-Archive ffmpeg.zip -DestinationPath ffmpeg_temp
         
-        # 智能查找完整版 ffmpeg.exe
+        # 智能查找：BtbN 的 exe 通常在 bin 文件夹里，使用递归查找确保找到
         $ffmpegPath = Get-ChildItem -Path ffmpeg_temp -Recurse -Filter "ffmpeg.exe" | Select-Object -First 1
+        
         if ($ffmpegPath) {
+            Write-Host "Found FFmpeg at: $($ffmpegPath.FullName)"
             Move-Item $ffmpegPath.FullName .
             Write-Host "FFmpeg Full Version ready."
         } else {
-            Write-Error "FFmpeg executable not found!"
+            Write-Error "FFmpeg executable not found in the zip!"
             exit 1
         }
 
-    # --- 修复点 2: 下载 ExifTool 最新版 (修复 404 错误) ---
+    # --- 修复点 2: ExifTool 保持最新逻辑 ---
     - name: Download ExifTool
       shell: pwsh
       run: |
         Write-Host "Downloading ExifTool v13.xx..."
-        # 使用官方最新的 64位版本链接 (长期有效)
+        # 使用官方最新的 64位版本链接
         Invoke-WebRequest -Uri "https://exiftool.org/exiftool-13.20_64.zip" -OutFile "exiftool.zip"
         
         Write-Host "Extracting ExifTool..."
         Expand-Archive exiftool.zip -DestinationPath exiftool_temp
         
-        # 智能查找并重命名
+        # 智能查找 (-k) 版本并重命名
         $exiftoolOriginal = Get-ChildItem -Path exiftool_temp -Recurse -Filter "exiftool(-k).exe" | Select-Object -First 1
+        
         if ($exiftoolOriginal) {
+            Write-Host "Found ExifTool at: $($exiftoolOriginal.FullName)"
             Move-Item $exiftoolOriginal.FullName -Destination ".\exiftool.exe"
             Write-Host "ExifTool ready."
         } else {
@@ -65,6 +71,7 @@ jobs:
             exit 1
         }
 
+    # 打包流程
     - name: Build EXE with PyInstaller
       run: |
         pyinstaller --clean --onefile --console --name "PolaFlow_Global_Hacker_v24" --add-data "ffmpeg.exe;." --add-data "exiftool.exe;." main.py
