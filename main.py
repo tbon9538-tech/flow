@@ -22,7 +22,7 @@ EXIFTOOL_EXE = get_resource_path("exiftool.exe")
 
 # --- 1. 全球热门投放地区指纹库 & 硬件设备池 ---
 
-# [新增] 硬件指纹池：避免单一设备号风控
+# [硬件指纹池] 避免单一设备号风控
 DEVICE_POOL = [
     ("Apple", "iPhone 14 Pro", "16.1.1"),
     ("Apple", "iPhone 15 Pro", "17.0.2"),
@@ -57,10 +57,10 @@ def select_timezone_visual():
             messagebox.showwarning("警告", "请先选择目标市场")
 
     root = tk.Tk()
-    root.title("PolaFlow Global Hacker v22.0 - Final")
-    root.geometry("450x280")
+    root.title("PolaFlow Global Hacker v23.0 - Ultimate Stealth")
+    root.geometry("480x300")
     
-    lbl = tk.Label(root, text="🌍 增长黑客版：选择目标投放地区\n(自动匹配时区、硬件指纹、音频混响)", 
+    lbl = tk.Label(root, text="🌍 增长黑客终极版 v23.0\n[去 Lavf 标签 + 深度元数据清洗 + 原生文件名伪装]", 
                    pady=20, font=("Arial", 10, "bold"))
     lbl.pack()
     
@@ -68,8 +68,8 @@ def select_timezone_visual():
     combo.set("--- 点击选择市场 ---")
     combo.pack(pady=5)
     
-    btn = tk.Button(root, text="🚀 启动全维度重构矩阵", command=on_confirm, 
-                    bg="#1a73e8", fg="white", width=25, height=2)
+    btn = tk.Button(root, text="🚀 启动隐身重构矩阵", command=on_confirm, 
+                    bg="#d93025", fg="white", width=25, height=2) # 红色按钮示警
     btn.pack(pady=25)
     
     root.mainloop()
@@ -103,14 +103,12 @@ def get_ultimate_visual_chain():
 def mutate_video(input_file, output_file, config):
     offset = config['offset']
     
-    # --- [升级] 动态音频滤镜 (微混响) ---
+    # --- [音频指纹优化] ---
     # e_delay 控制在 0.002-0.02s (2ms-20ms)，产生“加厚/金属”音色，不影响语音清晰度
     h_gain = round(random.uniform(3, 8), 2)
     e_delay = round(random.uniform(0.002, 0.02), 4)  
     e_decay = round(random.uniform(0.05, 0.15), 2)
     
-    # anequalizer: 提升高频空气感
-    # aecho: 极短延迟混响，改变声纹波形
     ap = f"anequalizer=c0 f=20000 w=2000 g={h_gain},aecho=0.8:0.88:{e_delay}:{e_decay}"
     
     # 视觉呼吸与随机裁切
@@ -119,13 +117,16 @@ def mutate_video(input_file, output_file, config):
     
     vf = ",".join(get_ultimate_visual_chain() + [sj, lb])
     
-    # FFmpeg 渲染指令
+    # --- [核心升级: 去 FFmpeg 标签] ---
     cmd = [
         FFMPEG_EXE, '-y', '-hide_banner', '-loglevel', 'error', 
         '-i', str(input_file),
         '-vf', vf, 
         '-af', ap, 
         '-c:v', 'libx264', 
+        # [关键优化] 禁止写入 Lavf 和 x264 库信息
+        '-x264-params', 'no-info=1',  
+        '-bsf:v', 'filter_units=remove_types=6', # 移除 SEI 数据 (进一步清洗)
         '-crf', str(random.randint(18, 22)),   # 动态码率
         '-preset', 'fast', 
         '-map_metadata', '-1',                 # 清除原始元数据
@@ -136,18 +137,17 @@ def mutate_video(input_file, output_file, config):
     try:
         subprocess.run(cmd, check=True)
         
-        # --- [升级] 时序重构与硬件伪装 ---
+        # --- [时序重构与硬件伪装] ---
         
         # 1. 计算当地时间
         target_now = datetime.now(timezone.utc) + timedelta(hours=offset)
-        # 随机回拨 2-24 小时作为“拍摄时间”
         cap_dt = target_now - timedelta(minutes=random.randint(120, 1440))
         ts = cap_dt.strftime(f'%Y:%m:%d %H:%M:%S{"+" if offset >= 0 else "-"}{abs(offset):02d}:00')
         
         # 2. 从池中随机抽取设备
         make_val, model_val, sw_val = random.choice(DEVICE_POOL)
         
-        # 3. ExifTool 深度注入
+        # 3. ExifTool 深度注入 + [核心升级: 清除编码软件痕迹]
         exif_cmd = [
             EXIFTOOL_EXE, '-overwrite_original', 
             f"-Make={make_val}", 
@@ -156,7 +156,11 @@ def mutate_video(input_file, output_file, config):
             f"-CreateDate={ts}", 
             f"-ModifyDate={ts}", 
             f"-DateTimeOriginal={ts}", 
-            f"-InternalSerialNumber=SN{random.getrandbits(32)}", # 随机序列号
+            f"-InternalSerialNumber=SN{random.getrandbits(32)}", 
+            # [新增] 强制抹除编辑痕迹
+            f"-EncodingProcess=", # 清空编码过程描述
+            f"-VideoFrameRate=",  # 让播放器自己检测，不写死
+            f"-XMPToolkit=",      # 清空 XMP 工具包信息
             str(output_file)
         ]
         
@@ -165,16 +169,30 @@ def mutate_video(input_file, output_file, config):
         # 4. 修改文件系统时间 (utime)
         os.utime(output_file, (cap_dt.timestamp(), cap_dt.timestamp()))
         
-        print(f"[+] 成功: {input_file.name} -> 模拟设备: {model_val}")
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] [+] 成功: {output_file.name} -> 设备: {model_val}")
         return True
         
     except Exception as e:
         print(f"[!] 处理失败: {input_file.name} | {e}")
         return False
 
+# --- [核心升级: 原生文件名伪装逻辑] ---
+def get_stealth_filename(ext):
+    """
+    生成高度拟真的文件名
+    80% 概率模拟 iPhone 原生相册 (IMG_XXXX.MOV)
+    20% 概率模拟第三方剪辑软件导出 (Video_日期_随机.mp4)
+    """
+    if random.random() < 0.8:
+        # 模拟 iOS 原生相册命名
+        return f"IMG_{random.randint(1000, 9999)}{ext}"
+    else:
+        # 模拟 CapCut/剪映/微信保存
+        timestamp = datetime.now().strftime("%Y%m%d")
+        return f"Video_{timestamp}_{random.randint(100,999)}{ext}"
+
 # --- 3. 自动化任务引擎 ---
 def main():
-    # 必须在多进程任务前调用，防止 EXE 递归崩溃
     freeze_support()
     
     config = select_timezone_visual()
@@ -184,15 +202,21 @@ def main():
         out_p.mkdir(exist_ok=True)
         
         # 扫描 .mp4 和 .mov
-        tasks = [(f, out_p / f"FIN_{random.randint(10000, 99999)}_{f.stem}{config['ext']}", config) 
-                 for f in in_p.glob("*.*") if f.suffix.lower() in ('.mp4', '.mov')]
+        raw_files = [f for f in in_p.glob("*.*") if f.suffix.lower() in ('.mp4', '.mov')]
         
-        if not tasks:
+        if not raw_files:
             print("[!] raw 文件夹无视频。请放入素材。")
             return
 
-        print(f"[*] 引擎启动 | 核心数: {os.cpu_count()} | 任务数: {len(tasks)}")
-        print(f"[*] 正在进行: 视觉重构 -> 音频混响(20ms) -> 硬件指纹随机化 -> 时区对齐")
+        # 构建任务列表 (应用新的文件名伪装逻辑)
+        tasks = []
+        for f in raw_files:
+            # 动态生成一个“看起来像原生”的文件名
+            stealth_name = get_stealth_filename(config['ext'])
+            tasks.append((f, out_p / stealth_name, config))
+
+        print(f"[*] 隐身引擎启动 | 核心数: {os.cpu_count()} | 任务数: {len(tasks)}")
+        print(f"[*] 正在执行: [Lavf去标] -> [深度Exif清洗] -> [时区硬件重构] -> [原生命名]")
         
         with Pool(os.cpu_count()) as pool:
             pool.starmap(mutate_video, tasks)
