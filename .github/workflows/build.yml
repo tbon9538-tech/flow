@@ -28,7 +28,6 @@ jobs:
         pip install pyinstaller
 
     # 4. 自动下载 FFmpeg (Windows版)
-    # 注意：这里从 gyan.dev 下载构建版，解压并提取 ffmpeg.exe 到根目录
     - name: Download FFmpeg
       shell: pwsh
       run: |
@@ -36,24 +35,42 @@ jobs:
         Invoke-WebRequest -Uri "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip" -OutFile "ffmpeg.zip"
         Write-Host "Extracting FFmpeg..."
         Expand-Archive ffmpeg.zip -DestinationPath ffmpeg_temp
+        # 智能查找 ffmpeg.exe
         $ffmpegPath = Get-ChildItem -Path ffmpeg_temp -Recurse -Filter "ffmpeg.exe" | Select-Object -First 1
-        Move-Item $ffmpegPath.FullName .
-        Write-Host "FFmpeg ready."
+        if ($ffmpegPath) {
+            Move-Item $ffmpegPath.FullName .
+            Write-Host "FFmpeg ready."
+        } else {
+            Write-Error "FFmpeg not found!"
+            exit 1
+        }
 
-    # 5. 自动下载 ExifTool (Windows版)
-    # 注意：ExifTool 官网下载包里通常是 "exiftool(-k).exe"，需要重命名为 "exiftool.exe"
+    # 5. 自动下载 ExifTool (Windows版) - [已修复: v13.50 + 智能路径查找]
     - name: Download ExifTool
       shell: pwsh
       run: |
-        Write-Host "Downloading ExifTool..."
-        Invoke-WebRequest -Uri "https://exiftool.org/exiftool-12.77.zip" -OutFile "exiftool.zip"
+        Write-Host "Downloading ExifTool v13.50..."
+        # 使用官方最新的 64位版本链接
+        Invoke-WebRequest -Uri "https://exiftool.org/exiftool-13.50_64.zip" -OutFile "exiftool.zip"
+        
         Write-Host "Extracting ExifTool..."
         Expand-Archive exiftool.zip -DestinationPath exiftool_temp
-        Move-Item "exiftool_temp/exiftool(-k).exe" "exiftool.exe"
-        Write-Host "ExifTool ready."
+        
+        # 智能查找：无论解压后在第几层目录，都能找到 exiftool(-k).exe
+        $exiftoolOriginal = Get-ChildItem -Path exiftool_temp -Recurse -Filter "exiftool(-k).exe" | Select-Object -First 1
+        
+        if ($exiftoolOriginal) {
+            Write-Host "Found ExifTool at: $($exiftoolOriginal.FullName)"
+            # 重命名并移动到根目录
+            Move-Item $exiftoolOriginal.FullName -Destination ".\exiftool.exe"
+            Write-Host "ExifTool ready."
+        } else {
+            Write-Error "ExifTool executable not found in the zip file!"
+            exit 1
+        }
 
     # 6. 执行 PyInstaller 打包
-    # 关键参数：--add-data 将两个 exe 封入内部；--icon 可选
+    # 关键参数：--add-data 将两个 exe 封入内部
     - name: Build EXE with PyInstaller
       run: |
         pyinstaller --clean --onefile --console --name "PolaFlow_Global_Hacker_v22" --add-data "ffmpeg.exe;." --add-data "exiftool.exe;." main.py
