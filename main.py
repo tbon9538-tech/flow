@@ -34,17 +34,37 @@ DEVICE_POOL = [
 ]
 
 def select_timezone_visual():
-    """GUI 选择目标市场时区"""
+    """GUI 选择目标市场时区 (v24.0 全球扩充版)"""
     tz_map = {
-        "🇺🇸 美国-洛杉矶 (西海岸 UTC-8)": {"offset": -8, "ext": ".MOV"},
-        "🇺🇸 美国-纽约 (东海岸 UTC-5)": {"offset": -5, "ext": ".MOV"},
-        "🇯🇵 日本-东京 (JST/UTC+9)": {"offset": 9, "ext": ".MOV"},
-        "🇰🇷 韩国-首尔 (KST/UTC+9)": {"offset": 9, "ext": ".MOV"},
-        "🇬🇧 英国-伦敦 (GMT/UTC+0)": {"offset": 0, "ext": ".mp4"},
-        "🇩🇪 德国-柏林 (CET/UTC+1)": {"offset": 1, "ext": ".mp4"},
-        "🇭🇰 中国-香港 (HKT/UTC+8)": {"offset": 8, "ext": ".mp4"},
-        "🇻🇳 越南-河内 (ICT/UTC+7)": {"offset": 7, "ext": ".mp4"},
-        "🇸🇬 新加坡 (SGT/UTC+8)": {"offset": 8, "ext": ".mp4"}
+        # --- 🇺🇸 北美战区 (高客单/金融) ---
+        "🇺🇸 美国-洛杉矶 (US West/UTC-8)": {"offset": -8, "ext": ".MOV"},
+        "🇺🇸 美国-纽约 (US East/UTC-5)": {"offset": -5, "ext": ".MOV"},
+        "🇺🇸 美国-芝加哥 (US Central/UTC-6)": {"offset": -6, "ext": ".MOV"},
+        "🇨🇦 加拿大-多伦多 (Canada/UTC-5)": {"offset": -5, "ext": ".MOV"},
+
+        # --- 🇪🇺 欧洲战区 (时尚/品牌) ---
+        "🇬🇧 英国-伦敦 (UK/UTC+0)": {"offset": 0, "ext": ".mp4"},
+        "🇩🇪 德国-柏林 (Germany/UTC+1)": {"offset": 1, "ext": ".mp4"},
+        "🇫🇷 法国-巴黎 (France/UTC+1)": {"offset": 1, "ext": ".mp4"},
+        "🇪🇸 西班牙-马德里 (Spain/UTC+1)": {"offset": 1, "ext": ".mp4"},
+        "🇮🇹 意大利-罗马 (Italy/UTC+1)": {"offset": 1, "ext": ".mp4"},
+
+        # --- 🌏 东亚战区 (精细化运营) ---
+        "🇯🇵 日本-东京 (Japan/UTC+9)": {"offset": 9, "ext": ".MOV"},
+        "🇰🇷 韩国-首尔 (Korea/UTC+9)": {"offset": 9, "ext": ".MOV"},
+        "🇹🇼 中国-台湾 (Taiwan/UTC+8)": {"offset": 8, "ext": ".MOV"},
+        "🇭🇰 中国-香港 (HongKong/UTC+8)": {"offset": 8, "ext": ".mp4"},
+
+        # --- 🌴 东南亚战区 (走量/带货/直播) ---
+        "🇻🇳 越南-河内 (Vietnam/UTC+7)": {"offset": 7, "ext": ".mp4"},
+        "🇹🇭 泰国-曼谷 (Thailand/UTC+7)": {"offset": 7, "ext": ".mp4"},
+        "🇮🇩 印尼-雅加达 (Indonesia/UTC+7)": {"offset": 7, "ext": ".mp4"},
+        "🇵🇭 菲律宾-马尼拉 (Philippines/UTC+8)": {"offset": 8, "ext": ".mp4"},
+        "🇲🇾 马来西亚-吉隆坡 (Malaysia/UTC+8)": {"offset": 8, "ext": ".mp4"},
+        "🇸🇬 新加坡 (Singapore/UTC+8)": {"offset": 8, "ext": ".mp4"},
+
+        # --- 🦘 澳洲战区 (英语系补充) ---
+        "🇦🇺 澳大利亚-悉尼 (Australia/UTC+10)": {"offset": 10, "ext": ".MOV"}
     }
     selected_data = [None]
     
@@ -57,18 +77,18 @@ def select_timezone_visual():
             messagebox.showwarning("警告", "请先选择目标市场")
 
     root = tk.Tk()
-    root.title("PolaFlow Global Hacker v23.0 - Ultimate Stealth")
-    root.geometry("480x300")
+    root.title("PolaFlow Global Hacker v24.0 - World Domination")
+    root.geometry("500x320")
     
-    lbl = tk.Label(root, text="🌍 增长黑客终极版 v23.0\n[去 Lavf 标签 + 深度元数据清洗 + 原生文件名伪装]", 
+    lbl = tk.Label(root, text="🌍 增长黑客全球版 v24.0\n[覆盖: 北美/欧洲/日韩/东南亚/澳洲]", 
                    pady=20, font=("Arial", 10, "bold"))
     lbl.pack()
     
-    combo = ttk.Combobox(root, values=list(tz_map.keys()), width=45, state="readonly")
-    combo.set("--- 点击选择市场 ---")
+    combo = ttk.Combobox(root, values=list(tz_map.keys()), width=55, state="readonly")
+    combo.set("--- 点击选择全球投放战场 ---")
     combo.pack(pady=5)
     
-    btn = tk.Button(root, text="🚀 启动隐身重构矩阵", command=on_confirm, 
+    btn = tk.Button(root, text="🚀 启动全球矩阵重构", command=on_confirm, 
                     bg="#d93025", fg="white", width=25, height=2) # 红色按钮示警
     btn.pack(pady=25)
     
@@ -215,8 +235,8 @@ def main():
             stealth_name = get_stealth_filename(config['ext'])
             tasks.append((f, out_p / stealth_name, config))
 
-        print(f"[*] 隐身引擎启动 | 核心数: {os.cpu_count()} | 任务数: {len(tasks)}")
-        print(f"[*] 正在执行: [Lavf去标] -> [深度Exif清洗] -> [时区硬件重构] -> [原生命名]")
+        print(f"[*] 全球引擎启动 | 核心数: {os.cpu_count()} | 任务数: {len(tasks)}")
+        print(f"[*] 正在执行: [Lavf去标] -> [深度Exif清洗] -> [全球时区重构] -> [原生命名]")
         
         with Pool(os.cpu_count()) as pool:
             pool.starmap(mutate_video, tasks)
