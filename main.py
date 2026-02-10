@@ -77,10 +77,10 @@ def select_timezone_visual():
             messagebox.showwarning("警告", "请先选择目标市场")
 
     root = tk.Tk()
-    root.title("PolaFlow Global Hacker v24.0 - World Domination")
+    root.title("PolaFlow Global Hacker v24.1 Fix - World Domination")
     root.geometry("500x320")
     
-    lbl = tk.Label(root, text="🌍 增长黑客全球版 v24.0\n[覆盖: 北美/欧洲/日韩/东南亚/澳洲]", 
+    lbl = tk.Label(root, text="🌍 增长黑客全球版 v24.1 (修复版)\n[覆盖: 北美/欧洲/日韩/东南亚/澳洲]", 
                    pady=20, font=("Arial", 10, "bold"))
     lbl.pack()
     
@@ -109,7 +109,7 @@ def get_ultimate_visual_chain():
     
     # 构建滤镜链
     return [
-        f"dctdnoiz=s={freq}:n=3",                              # 频域降噪 (破坏原始噪点指纹)
+        f"dctdnoiz=s={freq}:n=3",                              # 频域降噪 (已修复 n=3)
         "scale=iw:-1:flags=lanczos+accurate_rnd",              # 采样重算
         f"lenscorrection=k1={k1}:k2=0.001",                    # 几何重构
         f"chromashift=cbh={chroma}:crh={-chroma}:cbv={chroma}:crv={-chroma}", # 模拟光学瑕疵
@@ -133,7 +133,9 @@ def mutate_video(input_file, output_file, config):
     
     # 视觉呼吸与随机裁切
     sj = f"crop=iw-4:ih-4:{random.randint(0,4)}:{random.randint(0,4)},scale=1080:1920"
-    lb = f"geq=lum='p(x,y)*(1+0.005*sin(2*PI*0.5*t))'" # 亮度呼吸 (Luma Breath)
+    
+    # [关键修复] 将 't' 改为 'N/30' (用帧数模拟时间)，修复 geq 报错
+    lb = f"geq=lum='p(x,y)*(1+0.005*sin(2*PI*0.5*N/30))'" # 亮度呼吸 (Luma Breath)
     
     vf = ",".join(get_ultimate_visual_chain() + [sj, lb])
     
@@ -235,7 +237,7 @@ def main():
             stealth_name = get_stealth_filename(config['ext'])
             tasks.append((f, out_p / stealth_name, config))
 
-        print(f"[*] 全球引擎启动 | 核心数: {os.cpu_count()} | 任务数: {len(tasks)}")
+        print(f"[*] 全球引擎启动 v24.1 Fix | 核心数: {os.cpu_count()} | 任务数: {len(tasks)}")
         print(f"[*] 正在执行: [Lavf去标] -> [深度Exif清洗] -> [全球时区重构] -> [原生命名]")
         
         with Pool(os.cpu_count()) as pool:
@@ -245,4 +247,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
