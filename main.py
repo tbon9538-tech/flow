@@ -173,20 +173,21 @@ def mutate_video(input_file, output_dir, region_data):
 
         output_file = output_dir / filename
 
-# --- 音频指纹终极优化版 (PolaFlow v28.0 Final - V3 Logic) ---
-pitch_factor = random.uniform(0.98, 1.02)
-h_gain = round(random.uniform(3, 5), 2)
-e_delay = round(random.uniform(25, 45), 4)
-e_decay = round(random.uniform(0.1, 0.15), 2)
+        # V3 终极音频链 (请确保这段代码在 try 缩进内)
+        # ==========================================
+        pitch_factor = random.uniform(0.98, 1.02)
+        h_gain = round(random.uniform(3, 5), 2)
+        e_delay = round(random.uniform(25, 45), 4)
+        e_decay = round(random.uniform(0.1, 0.15), 2)
 
-ap = (
-    f"anequalizer=c0 f=18000 w=2000 g={h_gain}," # 增强高频细节
-    f"aecho=1.0:0.3:{e_delay}:{e_decay},"        # 增加环境空间混响
-    f"asetrate=44100*{pitch_factor:.5f},"       # 物理变调
-    f"atempo={1/pitch_factor:.5f},"             # 时间补偿，保时长
-    f"aresample=44100,"                         # 归一化采样率
-    f"dynaudnorm=f=150:g=15:p=0.9:m=10.0"       # 响度标准化，防爆音
-)
+        ap = (
+            f"anequalizer=c0 f=18000 w=2000 g={h_gain},"
+            f"aecho=1.0:0.3:{e_delay}:{e_decay},"
+            f"asetrate=44100*{pitch_factor:.5f},"
+            f"atempo={1/pitch_factor:.5f},"
+            f"aresample=44100,"
+            f"dynaudnorm=f=150:g=15:p=0.9:m=10.0"
+        )
         
         # --- 帧率 ---
         target_fps = random.choice(["23.976", "29.97", "59.94"]) 
@@ -319,4 +320,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
