@@ -173,21 +173,19 @@ def mutate_video(input_file, output_dir, region_data):
 
         output_file = output_dir / filename
 
+        # --- 音频指纹 ---
+pitch_factor = round(random.uniform(0.985, 1.015), 5)
+        h_gain = round(random.uniform(3, 6), 2)
+        e_delay = random.randint(30, 100)
+        e_decay = round(random.uniform(0.08, 0.15), 2)
 
-        # --- 优化点 1: 音频指纹 (纯净听感修复) ---
-        pitch_factor = random.uniform(0.98, 1.02) # ±2% 物理移调
-        h_gain = round(random.uniform(3, 8), 2)
-        e_delay = round(random.uniform(0.002, 0.015), 4)
-        e_decay = round(random.uniform(0.1, 0.2), 2)
-        
         ap = (
-            f"anequalizer=c0 f=20000 w=2000 g={h_gain},"
-            # 🔥 0.001 (0.1%) 回声：人耳听不到，数据层存在
-            f"aecho=1.0:0.001:{e_delay}:{e_decay},"  
+            f"anequalizer=c0 f=18000 w=2000 g={h_gain},"
+            f"aecho=0.8:0.9:{e_delay}:{e_decay},"
             f"asetrate=44100*{pitch_factor},"
+            f"atempo={round(1/pitch_factor,5)},"
             f"aresample=44100"
         )
-        
         
         # --- 帧率 ---
         target_fps = random.choice(["23.976", "29.97", "59.94"]) 
@@ -320,4 +318,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
