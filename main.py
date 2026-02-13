@@ -10,6 +10,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from multiprocessing import Pool, freeze_support
 
+
 # ==========================================
 # 0. 基础环境配置
 # ==========================================
@@ -17,6 +18,7 @@ def get_resource_path(relative_path):
     if hasattr(sys, '_MEIPASS'):
         return os.path.join(sys._MEIPASS, relative_path)
     return os.path.join(os.path.abspath("."), relative_path)
+
 
 # 自动判断系统后缀
 EXT = ".exe" if platform.system() == "Windows" else ""
@@ -28,17 +30,49 @@ if not os.path.exists(FFMPEG_EXE): FFMPEG_EXE = "ffmpeg"
 if not os.path.exists(EXIFTOOL_EXE): EXIFTOOL_EXE = "exiftool"
 
 # ==========================================
-# 1. 设备数据库
+# 1. 设备数据库 (2026 顶奢旗舰版 - High End Only)
 # ==========================================
 DEVICE_DATABASE = [
-    ("Apple", "iPhone 14 Pro", "16.1.1", [".MOV", ".mp4"]),
-    ("Apple", "iPhone 15 Pro", "17.0.2", [".MOV", ".mp4"]),
-    ("Apple", "iPhone 15 Pro Max", "17.2.1", [".MOV", ".mp4"]),
-    ("Apple", "iPhone 16 Pro", "18.0", [".MOV", ".mp4"]),
-    ("Apple", "iPhone 16 Pro Max", "18.1", [".MOV", ".mp4"]),
-    ("Samsung", "SM-S928B", "Android 14", [".mp4"]), # S24 Ultra
-    ("Google", "Pixel 8 Pro", "Android 14", [".mp4"])
+    # ----------------------------------------
+    # [Apple] 2026 年度机皇 (最新 iOS 26.3)
+    # ----------------------------------------
+    # 特性: 2026年2月11日刚发布的最新系统，权重极高
+    ("Apple", "iPhone 17 Pro Max", "26.3", [".MOV", ".mp4"]),
+    ("Apple", "iPhone 17 Pro", "26.3", [".MOV", ".mp4"]),
+    ("Apple", "iPhone 17 Pro Max", "19.3.1", [".MOV", ".mp4"]),
+    ("Apple", "iPhone 17 Pro", "19.3", [".MOV", ".mp4"]),
+
+    # ----------------------------------------
+    # [Apple] 次旗舰主力 (存量高端用户)
+    # ----------------------------------------
+    # iPhone 16 Pro 系列 (依然是主力，用户基数大且优质)
+    ("Apple", "iPhone 16 Pro Max", "26.2.1", [".MOV", ".mp4"]),
+    ("Apple", "iPhone 16 Pro", "26.1", [".MOV", ".mp4"]),
+    # iPhone 15 Pro Max (经典的钉子户旗舰，系统升级到最新)
+    ("Apple", "iPhone 15 Pro Max", "26.0", [".MOV", ".mp4"]),
+    ("Apple", "iPhone 16 Pro Max", "19.2.1", [".MOV", ".mp4"]),
+    ("Apple", "iPhone 16 Pro", "19.0", [".MOV", ".mp4"]),  # 很多人停留在初始大版本
+    # iPhone 15 Pro Max (钉子户)
+    ("Apple", "iPhone 15 Pro Max", "18.5", [".MOV", ".mp4"]),
+
+    # ----------------------------------------
+    # [Samsung] 安卓阵营天花板 (Android 16)
+    # ----------------------------------------
+    # S25 Ultra (2025/2026 跨年机皇)
+    ("Samsung", "SM-S938B", "Android 16", [".mp4"]),  # Galaxy S25 Ultra
+    # Z Fold 7 (2026 最新折叠屏，极客/富人标签)
+    ("Samsung", "SM-F966B", "Android 16", [".mp4"]),  # Galaxy Z Fold 7
+    # S24 Ultra (老款机皇，保留少量用于混淆)
+    ("Samsung", "SM-S928B", "Android 16", [".mp4"]),  # Galaxy S24 Ultra
+
+    # ----------------------------------------
+    # [Google] 影像旗舰 (Pixel 10 系列)
+    # ----------------------------------------
+    # 专攻画质权重的账号
+    ("Google", "Pixel 10 Pro XL", "Android 16", [".mp4"]),  # 谷歌最新超大杯
+    ("Google", "Pixel 10 Pro", "Android 16", [".mp4"]),
 ]
+
 
 # ==========================================
 # 2. 全球战场选择器
@@ -66,9 +100,9 @@ def select_timezone_visual():
         "🇸🇬 新加坡": (8, 1.3521, 103.8198),
         "🇦🇺 澳大利亚-悉尼": (10, -33.8688, 151.2093)
     }
-    
+
     selected_data = [None]
-    
+
     def on_confirm():
         choice = combo.get()
         if choice in tz_map:
@@ -80,21 +114,22 @@ def select_timezone_visual():
     root = tk.Tk()
     root.title("PolaFlow v28.0 - Final Optimized")
     root.geometry("500x350")
-    
-    lbl = tk.Label(root, text="🌍 全球矩阵重构系统 v28.0 (Final)\n[特性: 完美色彩 / 原生命名 / 无黑边去重]", 
+
+    lbl = tk.Label(root, text="🌍 全球矩阵重构系统 v28.0 (Final)\n[特性: 完美色彩 / 原生命名 / 无黑边去重]",
                    pady=20, font=("Arial", 10, "bold"))
     lbl.pack()
-    
+
     combo = ttk.Combobox(root, values=list(tz_map.keys()), width=55, state="readonly")
     combo.set("--- 点击选择全球投放战场 ---")
     combo.pack(pady=5)
-    
-    btn = tk.Button(root, text="🚀 启动完美生成", command=on_confirm, 
+
+    btn = tk.Button(root, text="🚀 启动完美生成", command=on_confirm,
                     bg="#2ecc71", fg="white", width=25, height=2)
     btn.pack(pady=25)
-    
+
     root.mainloop()
     return selected_data[0]
+
 
 # ==========================================
 # 3. 滤镜链 (Fix 3: 使用安全的缩放裁剪替代旋转)
@@ -104,48 +139,49 @@ def get_ultimate_visual_chain():
     chroma = random.uniform(0.6, 1.4)
     freq = random.uniform(2, 4.5)
     noise = random.randint(2, 4)
-    
+
     # 调色曲线
     financial_curves = "curves=all='0/0 0.2/0.18 0.5/0.5 0.8/0.82 1/1'"
-    
+
     # 核心修改：使用 Zoom-in (1.01x) 然后随机 Crop，代替 Rotate
     # 这能保证画面哈希改变，但绝对不会出现黑边
-    
+
     # 随机偏移量 (在 10px 范围内浮动)
     x_offset = random.randint(0, 8)
     y_offset = random.randint(0, 8)
-    
+
     zoom_crop = (
-        f"scale=1090:1938:flags=lanczos," # 先放大约 1%
-        f"crop=1080:1920:{x_offset}:{y_offset}" # 再切回 1080p
+        f"scale=1090:1938:flags=lanczos,"  # 先放大约 1%
+        f"crop=1080:1920:{x_offset}:{y_offset}"  # 再切回 1080p
     )
 
     return [
         f"dctdnoiz=s={freq}:n=3",
-        zoom_crop, # 替代了 rotate
+        zoom_crop,  # 替代了 rotate
         f"lenscorrection=k1={k1}:k2=0.001",
         f"chromashift=cbh={chroma}:crh={-chroma}:cbv={chroma}:crv={-chroma}",
         f"vignette='PI/4+{random.uniform(0.02, 0.08)}'",
         f"noise=alls={noise}:allf=t+u",
         financial_curves,
-        "format=yuv420p" # 确保颜色空间正确
+        "format=yuv420p"  # 确保颜色空间正确
     ]
+
 
 # ==========================================
 # 4. 核心处理引擎
 # ==========================================
 def mutate_video(input_file, output_dir, region_data):
-    offset, base_lat, base_lon = region_data 
-    
+    offset, base_lat, base_lon = region_data
+
     try:
         # A. 抽取设备
         make_val, model_val, sw_val, _ = random.choice(DEVICE_DATABASE)
-        
+
         # B. 场景决策 (Fix 2: 修正文件名逻辑，去除 UUID)
         # unique_id 仅用于 Exif 的内部序列号，不用于文件名
-        unique_id = str(uuid.uuid4())[:8] 
+        unique_id = str(uuid.uuid4())[:8]
         process_type = ""
-        
+
         if make_val == "Apple":
             # Apple 命名规范: IMG_XXXX.MOV
             if random.random() < 0.8:
@@ -156,14 +192,14 @@ def mutate_video(input_file, output_dir, region_data):
             else:
                 target_ext = ".mp4"
                 # 导出视频通常是 "Video.mp4" 或日期
-                filename = f"Video_{datetime.now().strftime('%Y%m%d')}_{random.randint(10,99)}{target_ext}"
+                filename = f"Video_{datetime.now().strftime('%Y%m%d')}_{random.randint(10, 99)}{target_ext}"
                 process_type = "Editor Export"
         else:
             # Android 命名规范: 20260213_160000.mp4
-            target_ext = ".mp4" 
+            target_ext = ".mp4"
             date_str = datetime.now().strftime('%Y%m%d')
             time_str = datetime.now().strftime('%H%M%S')
-            
+
             if random.random() < 0.8:
                 filename = f"{date_str}_{time_str}{target_ext}"
                 process_type = "Native Camera"
@@ -172,7 +208,7 @@ def mutate_video(input_file, output_dir, region_data):
                 process_type = "Editor Export"
 
         output_file = output_dir / filename
-
+        # ==========================================
         # V3 终极音频链 (请确保这段代码在 try 缩进内)
         # ==========================================
         pitch_factor = random.uniform(0.98, 1.02)
@@ -181,17 +217,18 @@ def mutate_video(input_file, output_dir, region_data):
         e_decay = round(random.uniform(0.1, 0.15), 2)
 
         ap = (
+
             f"anequalizer=c0 f=18000 w=2000 g={h_gain},"
             f"aecho=1.0:0.3:{e_delay}:{e_decay},"
             f"asetrate=44100*{pitch_factor:.5f},"
-            f"atempo={1/pitch_factor:.5f},"
+            f"atempo={1 / pitch_factor:.5f},"
             f"aresample=44100,"
             f"dynaudnorm=f=150:g=15:p=0.9:m=10.0"
         )
-        
+
         # --- 帧率 ---
-        target_fps = random.choice(["23.976", "29.97", "59.94"]) 
-        
+        target_fps = random.choice(["23.976", "29.97", "59.94"])
+
         # --- 视觉滤镜 ---
         vf = ",".join(get_ultimate_visual_chain())
 
@@ -203,17 +240,17 @@ def mutate_video(input_file, output_dir, region_data):
             '-r', target_fps,
             '-c:v', 'libx264',
             '-x264-params', 'no-info=1',
-            '-bsf:v', 'filter_units=remove_types=6', # 核心: 移除 SEI
+            '-bsf:v', 'filter_units=remove_types=6',  # 核心: 移除 SEI
             '-crf', str(random.randint(19, 23)),
             '-preset', 'fast',
             '-bitexact',
             '-map_metadata', '-1',
-            '-c:a', 'aac', 
+            '-c:a', 'aac',
             '-ar', random.choice(['44100', '48000']),
             '-b:a', f'{random.randint(128, 192)}k',
             str(output_file)
         ]
-        
+
         subprocess.run(cmd, check=True)
 
         # -------------------------------------------------
@@ -235,12 +272,12 @@ def mutate_video(input_file, output_dir, region_data):
         anti_forensics_tags = []
         if make_val == "Apple":
             anti_forensics_tags = [
-                "-MajorBrand=qt  ",   
+                "-MajorBrand=qt",
                 "-MinorVersion=0.0.0",
-                "-CompatibleBrands=qt  ",
-                "-CompressorName=H.264", 
-                "-VendorID=apple",       
-                "-Encoder=",             
+                "-CompatibleBrands=qt",
+                "-CompressorName=H.264",
+                "-VendorID=apple",
+                "-Encoder=",
                 "-HandlerVendorID=apple",
                 "-HandlerDescription=Core Media Video"
             ]
@@ -249,8 +286,8 @@ def mutate_video(input_file, output_dir, region_data):
                 "-MajorBrand=mp42",
                 "-MinorVersion=0.0.0",
                 "-CompatibleBrands=mp42isom",
-                "-CompressorName=",      
-                "-VendorID=",            
+                "-CompressorName=",
+                "-VendorID=",
                 "-Encoder=",
                 "-HandlerVendorID=",
                 "-HandlerDescription=VideoHandle"
@@ -264,17 +301,17 @@ def mutate_video(input_file, output_dir, region_data):
             f"-CreateDate={ts}",
             f"-ModifyDate={ts}",
             f"-DateTimeOriginal={ts}",
-            f"-InternalSerialNumber={unique_id}", # 序列号藏在内部
+            f"-InternalSerialNumber={unique_id}",  # 序列号藏在内部
             f"-VideoFrameRate={target_fps}",
             f"-GPSLatitude={abs(final_lat)}",
             f"-GPSLatitudeRef={lat_ref}",
             f"-GPSLongitude={abs(final_lon)}",
             f"-GPSLongitudeRef={lon_ref}",
         ]
-        
+
         # 执行写入
         full_exif_cmd = exif_base_cmd + anti_forensics_tags + [str(output_file)]
-        
+
         result = subprocess.run(full_exif_cmd, capture_output=True, text=True)
         if result.returncode != 0:
             print(f"[!] Warning: Exif write simplified due to error: {result.stderr}")
@@ -289,36 +326,39 @@ def mutate_video(input_file, output_dir, region_data):
         print(f"[!] 错误 {input_file}: {e}")
         return False
 
+
 # ==========================================
 # 5. 主程序
 # ==========================================
 def main():
     freeze_support()
     print("--- PolaFlow Anti-Forensic Engine v28.0 (Final) ---")
-    
-    region_data = select_timezone_visual() 
-    
+
+    region_data = select_timezone_visual()
+
     if region_data is not None:
         in_p, out_p = Path("./raw"), Path("./output")
-        in_p.mkdir(exist_ok=True); out_p.mkdir(exist_ok=True)
-        
+        in_p.mkdir(exist_ok=True);
+        out_p.mkdir(exist_ok=True)
+
         raw_files = [f for f in in_p.glob("*.*") if f.suffix.lower() in ('.mp4', '.mov', '.m4v', '.webm')]
         if not raw_files:
             print("[!] raw 文件夹无视频。")
             return
 
         tasks = [(f, out_p, region_data) for f in raw_files]
-        cpu_cores = max(1, os.cpu_count() - 1)
-        
+        # 考虑到 dctdnoiz 的极高负载，建议保守设置并发数
+        # 如果是 8 核 CPU，建议只开 4 个进程，或者给 FFmpeg 限制线程
+        cpu_cores = max(1, int(os.cpu_count() / 2))
+
         print(f"[*] 引擎启动 | 核心: {cpu_cores} | 任务: {len(tasks)}")
-        
+
         with Pool(cpu_cores) as pool:
             pool.starmap(mutate_video, tasks)
-            
+
         print("\n[+] 所有任务处理完成。")
         input("按 Enter 键退出...")
 
+
 if __name__ == "__main__":
     main()
-
-
