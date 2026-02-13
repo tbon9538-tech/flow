@@ -173,18 +173,24 @@ def mutate_video(input_file, output_dir, region_data):
 
         output_file = output_dir / filename
 
-        # --- 音频指纹 ---
-        pitch_factor = random.uniform(0.99, 1.01) # 降低音调波动幅度，避免人声变怪
-        h_gain = round(random.uniform(3, 8), 2)
-        e_delay = round(random.uniform(0.08, 0.15), 4)
-        e_decay = round(random.uniform(0.1, 0.2), 4)
-        
-        ap = (
-            f"anequalizer=c0 f=18000 w=2000 g={h_gain}," # 超高频底噪
-            f"aecho=1.0:0.001:{e_delay}:{e_decay},"  # 微弱回声
-            f"asetrate=44100*{pitch_factor},"
-            f"aresample=44100"
-        )
+# --- 高强度污染且保压方案 ---
+pitch_factor = random.uniform(0.99, 1.01) # 1% 的调速偏移（强力去重）
+
+ap = (
+    # 1. 改变采样率（底层指纹重写）
+    f"asetrate=44100*{pitch_factor},"
+    # 2. 引入“非线性失真”：给音频增加极微弱的颗粒感，破坏原片频谱连续性
+    f"aecho=1.0:0.6:1:0.01," 
+    # 3. 相位随机化：让音频的物理波形完全不同，但听起来没区别
+    f"aphaser=type=t:speed=0.5:decay=0.4,"
+    # 4. 频谱空隙填充：在超高频注入随机抖动噪声
+    f"anoisesrc=d=1:c=white:v=0.0005,apad,amerge=inputs=2,"
+    # 5. 核心保压：使用动态压缩器将声音拉满，确保“污染”后声音依然巨大
+    f"compand=attacks=0:points=-80/-80|-40/-35|-20/-10|0/-3,"
+    f"aresample=44100,"
+    # 6. 最终响度强制标准化
+    f"loudnorm=I=-14:TP=-1.0:LRA=11" # I=-14 比标准更响，更有攻击性
+)
         
         # --- 帧率 ---
         target_fps = random.choice(["23.976", "29.97", "59.94"]) 
