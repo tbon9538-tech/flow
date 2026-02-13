@@ -173,19 +173,20 @@ def mutate_video(input_file, output_dir, region_data):
 
         output_file = output_dir / filename
 
-        # --- 音频指纹 ---
-pitch_factor = round(random.uniform(0.985, 1.015), 5)
-        h_gain = round(random.uniform(3, 6), 2)
-        e_delay = random.randint(30, 100)
-        e_decay = round(random.uniform(0.08, 0.15), 2)
+# --- 音频指纹终极优化版 (PolaFlow v28.0 Final) ---
+pitch_factor = random.uniform(0.99, 1.01)  # 保持 1% 以内的移调，人耳无感
+h_gain = round(random.uniform(3, 5), 2)    # 补足超高频
+e_delay = round(random.uniform(25, 45), 4) # 25-45ms 的回声，过指纹的神器
+e_decay = round(random.uniform(0.1, 0.15), 2)
 
-        ap = (
-            f"anequalizer=c0 f=18000 w=2000 g={h_gain},"
-            f"aecho=0.8:0.9:{e_delay}:{e_decay},"
-            f"asetrate=44100*{pitch_factor},"
-            f"atempo={round(1/pitch_factor,5)},"
-            f"aresample=44100"
-        )
+ap = (
+    f"anequalizer=c0 f=18000 w=2000 g={h_gain},"
+    f"aecho=1.0:0.3:{e_delay}:{e_decay}," 
+    f"asetrate=44100*{pitch_factor},"
+    f"aresample=44100,"
+    # f=150:分析窗口, g=15:局部增益, p=0.9:目标峰值, m=10:最大放大倍数
+    f"dynaudnorm=f=150:g=15:p=0.9:m=10.0" 
+)
         
         # --- 帧率 ---
         target_fps = random.choice(["23.976", "29.97", "59.94"]) 
