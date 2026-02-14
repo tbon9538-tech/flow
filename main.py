@@ -4,21 +4,21 @@ import random
 import subprocess
 import uuid
 import platform
+import time
 import tkinter as tk
 from tkinter import ttk, messagebox
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from multiprocessing import Pool, freeze_support
 
-
 # ==========================================
-# 0. 基础环境配置
+# 0. 基础环境配置 (v29.0 God Mode)
 # ==========================================
 def get_resource_path(relative_path):
+    """获取资源绝对路径，适配 PyInstaller"""
     if hasattr(sys, '_MEIPASS'):
         return os.path.join(sys._MEIPASS, relative_path)
     return os.path.join(os.path.abspath("."), relative_path)
-
 
 # 自动判断系统后缀
 EXT = ".exe" if platform.system() == "Windows" else ""
@@ -30,79 +30,41 @@ if not os.path.exists(FFMPEG_EXE): FFMPEG_EXE = "ffmpeg"
 if not os.path.exists(EXIFTOOL_EXE): EXIFTOOL_EXE = "exiftool"
 
 # ==========================================
-# 1. 设备数据库 (2026 顶奢旗舰版 - High End Only)
+# 1. 逻辑自洽数据库 (设备 x 格式 x 固件)
 # ==========================================
 DEVICE_DATABASE = [
-    # ----------------------------------------
-    # [Apple] 2026 年度机皇 (最新 iOS 26.3)
-    # ----------------------------------------
-    # 特性: 2026年2月11日刚发布的最新系统，权重极高
-    ("Apple", "iPhone 17 Pro Max", "26.3", [".MOV", ".mp4"]),
-    ("Apple", "iPhone 17 Pro", "26.3", [".MOV", ".mp4"]),
-    ("Apple", "iPhone 17 Pro Max", "19.3.1", [".MOV", ".mp4"]),
-    ("Apple", "iPhone 17 Pro", "19.3", [".MOV", ".mp4"]),
-
-    # ----------------------------------------
-    # [Apple] 次旗舰主力 (存量高端用户)
-    # ----------------------------------------
-    # iPhone 16 Pro 系列 (依然是主力，用户基数大且优质)
-    ("Apple", "iPhone 16 Pro Max", "26.2.1", [".MOV", ".mp4"]),
-    ("Apple", "iPhone 16 Pro", "26.1", [".MOV", ".mp4"]),
-    # iPhone 15 Pro Max (经典的钉子户旗舰，系统升级到最新)
-    ("Apple", "iPhone 15 Pro Max", "26.0", [".MOV", ".mp4"]),
-    ("Apple", "iPhone 16 Pro Max", "19.2.1", [".MOV", ".mp4"]),
-    ("Apple", "iPhone 16 Pro", "19.0", [".MOV", ".mp4"]),  # 很多人停留在初始大版本
-    # iPhone 15 Pro Max (钉子户)
-    ("Apple", "iPhone 15 Pro Max", "18.5", [".MOV", ".mp4"]),
-
-    # ----------------------------------------
-    # [Samsung] 安卓阵营天花板 (Android 16)
-    # ----------------------------------------
-    # S25 Ultra (2025/2026 跨年机皇)
-    ("Samsung", "SM-S938B", "Android 16", [".mp4"]),  # Galaxy S25 Ultra
-    # Z Fold 7 (2026 最新折叠屏，极客/富人标签)
-    ("Samsung", "SM-F966B", "Android 16", [".mp4"]),  # Galaxy Z Fold 7
-    # S24 Ultra (老款机皇，保留少量用于混淆)
-    ("Samsung", "SM-S928B", "Android 16", [".mp4"]),  # Galaxy S24 Ultra
-
-    # ----------------------------------------
-    # [Google] 影像旗舰 (Pixel 10 系列)
-    # ----------------------------------------
-    # 专攻画质权重的账号
-    ("Google", "Pixel 10 Pro XL", "Android 16", [".mp4"]),  # 谷歌最新超大杯
-    ("Google", "Pixel 10 Pro", "Android 16", [".mp4"]),
+    # (厂商, 型号, 固件版本, [支持后缀列表])
+    ("Apple", "iPhone 14 Pro", "16.1.1", [".MOV"]),
+    ("Apple", "iPhone 15 Pro", "17.0.2", [".MOV"]),
+    ("Apple", "iPhone 15 Pro Max", "17.2.1", [".MOV"]),
+    ("Apple", "iPhone 16 Pro", "18.0", [".MOV"]),
+    ("Apple", "iPhone 16 Pro Max", "18.1", [".MOV"]),
+    ("Samsung", "SM-S928B", "Android 14", [".mp4"]), # S24 Ultra
+    ("Google", "Pixel 8 Pro", "Android 14", [".mp4"])
 ]
-
 
 # ==========================================
 # 2. 全球战场选择器
 # ==========================================
 def select_timezone_visual():
     tz_map = {
-        "🇺🇸 美国-洛杉矶 (US West)": (-8, 34.0522, -118.2437),
-        "🇺🇸 美国-纽约 (US East)": (-5, 40.7128, -74.0060),
-        "🇺🇸 美国-芝加哥 (US Central)": (-6, 41.8781, -87.6298),
-        "🇨🇦 加拿大-多伦多": (-5, 43.6532, -79.3832),
-        "🇬🇧 英国-伦敦 (UK)": (0, 51.5074, -0.1278),
-        "🇩🇪 德国-柏林 (Germany)": (1, 52.5200, 13.4050),
-        "🇫🇷 法国-巴黎 (France)": (1, 48.8566, 2.3522),
-        "🇪🇸 西班牙-马德里": (1, 40.4168, -3.7038),
-        "🇮🇹 意大利-罗马": (1, 41.9028, 12.4964),
-        "🇯🇵 日本-东京 (Japan)": (9, 35.6762, 139.6503),
-        "🇰🇷 韩国-首尔 (Korea)": (9, 37.5665, 126.9780),
-        "🇹🇼 中国-台湾 (Taiwan)": (8, 25.0330, 121.5654),
-        "🇭🇰 中国-香港 (HongKong)": (8, 22.3193, 114.1694),
-        "🇻🇳 越南-河内": (7, 21.0285, 105.8542),
-        "🇹🇭 泰国-曼谷": (7, 13.7563, 100.5018),
-        "🇮🇩 印尼-雅加达": (7, -6.2088, 106.8456),
-        "🇵🇭 菲律宾-马尼拉": (8, 14.5995, 120.9842),
-        "🇲🇾 马来西亚-吉隆坡": (8, 3.1390, 101.6869),
-        "🇸🇬 新加坡": (8, 1.3521, 103.8198),
-        "🇦🇺 澳大利亚-悉尼": (10, -33.8688, 151.2093)
+        "🇺🇸 美国-洛杉矶 (UTC-8)": (-8, 34.0522, -118.2437),
+        "🇺🇸 美国-纽约 (UTC-5)": (-5, 40.7128, -74.0060),
+        "🇬🇧 英国-伦敦 (UTC+0)": (0, 51.5074, -0.1278),
+        "🇩🇪 德国-柏林 (UTC+1)": (1, 52.5200, 13.4050),
+        "🇯🇵 日本-东京 (UTC+9)": (9, 35.6762, 139.6503),
+        "🇰🇷 韩国-首尔 (UTC+9)": (9, 37.5665, 126.9780),
+        "🇻🇳 越南-河内 (UTC+7)": (7, 21.0285, 105.8542),
+        "🇹🇭 泰国-曼谷 (UTC+7)": (7, 13.7563, 100.5018),
+        "🇮🇩 印尼-雅加达 (UTC+7)": (7, -6.2088, 106.8456),
+        "🇵🇭 菲律宾-马尼拉 (UTC+8)": (8, 14.5995, 120.9842),
+        "🇲🇾 马来西亚-吉隆坡 (UTC+8)": (8, 3.1390, 101.6869),
+        "🇸🇬 新加坡 (UTC+8)": (8, 1.3521, 103.8198),
+        "🇦🇺 澳大利亚-悉尼 (UTC+10)": (10, -33.8688, 151.2093)
     }
-
+    
     selected_data = [None]
-
+    
     def on_confirm():
         choice = combo.get()
         if choice in tz_map:
@@ -112,253 +74,257 @@ def select_timezone_visual():
             messagebox.showwarning("警告", "请先选择目标市场")
 
     root = tk.Tk()
-    root.title("PolaFlow v28.0 - Final Optimized")
-    root.geometry("500x350")
-
-    lbl = tk.Label(root, text="🌍 全球矩阵重构系统 v28.0 (Final)\n[特性: 完美色彩 / 原生命名 / 无黑边去重]",
-                   pady=20, font=("Arial", 10, "bold"))
+    root.title("PolaFlow v29.0 God Mode")
+    root.geometry("550x350")
+    
+    lbl = tk.Label(root, text="🌍 PolaFlow v29.0 上帝模式 (God Mode)\n[100%原生伪装 / 零0000时间戳 / Lavc擦除]", 
+                   pady=20, font=("Arial", 11, "bold"))
     lbl.pack()
-
+    
     combo = ttk.Combobox(root, values=list(tz_map.keys()), width=55, state="readonly")
     combo.set("--- 点击选择全球投放战场 ---")
     combo.pack(pady=5)
-
-    btn = tk.Button(root, text="🚀 启动完美生成", command=on_confirm,
-                    bg="#2ecc71", fg="white", width=25, height=2)
+    
+    btn = tk.Button(root, text="🚀 启动神级清洗", command=on_confirm, 
+                    bg="#8e44ad", fg="white", width=25, height=2)
     btn.pack(pady=25)
-
+    
     root.mainloop()
     return selected_data[0]
 
-
 # ==========================================
-# 3. 滤镜链 (Fix 3: 使用安全的缩放裁剪替代旋转)
+# 3. 视觉重构链 (修复色彩空间)
 # ==========================================
 def get_ultimate_visual_chain():
     k1 = random.uniform(-0.015, 0.015)
     chroma = random.uniform(0.6, 1.4)
     freq = random.uniform(2, 4.5)
     noise = random.randint(2, 4)
-
-    # 调色曲线
+    
+    # 财经质感曲线
     financial_curves = "curves=all='0/0 0.2/0.18 0.5/0.5 0.8/0.82 1/1'"
-
-    # 核心修改：使用 Zoom-in (1.01x) 然后随机 Crop，代替 Rotate
-    # 这能保证画面哈希改变，但绝对不会出现黑边
-
-    # 随机偏移量 (在 10px 范围内浮动)
+    
+    # 安全缩放 (Zoom-in 1% + 随机偏移)，代替旋转，防止黑边
     x_offset = random.randint(0, 8)
     y_offset = random.randint(0, 8)
-
+    
     zoom_crop = (
-        f"scale=1090:1938:flags=lanczos,"  # 先放大约 1%
-        f"crop=1080:1920:{x_offset}:{y_offset}"  # 再切回 1080p
+        f"scale=1090:1938:flags=lanczos," # 先放大约 1%
+        f"crop=1080:1920:{x_offset}:{y_offset}" # 再切回 1080p
     )
+
+    # 呼吸滤镜 (eq)
+    lb = f"eq=contrast='1+0.005*sin(2*PI*0.5*n/30)':eval=frame"
 
     return [
         f"dctdnoiz=s={freq}:n=3",
-        zoom_crop,  # 替代了 rotate
+        zoom_crop, 
         f"lenscorrection=k1={k1}:k2=0.001",
         f"chromashift=cbh={chroma}:crh={-chroma}:cbv={chroma}:crv={-chroma}",
         f"vignette='PI/4+{random.uniform(0.02, 0.08)}'",
         f"noise=alls={noise}:allf=t+u",
         financial_curves,
-        "format=yuv420p"  # 确保颜色空间正确
+        lb,
+        "format=yuv420p",
+        # [核心修复] 显式标记色彩空间为 BT.709 (模拟 iPhone SDR)
+        "setparams=color_primaries=bt709:color_trc=bt709:colorspace=bt709" 
     ]
-
 
 # ==========================================
 # 4. 核心处理引擎
 # ==========================================
 def mutate_video(input_file, output_dir, region_data):
-    offset, base_lat, base_lon = region_data
-
+    offset, base_lat, base_lon = region_data 
+    
     try:
-        # A. 抽取设备
-        make_val, model_val, sw_val, _ = random.choice(DEVICE_DATABASE)
-
-        # B. 场景决策 (Fix 2: 修正文件名逻辑，去除 UUID)
-        # unique_id 仅用于 Exif 的内部序列号，不用于文件名
-        unique_id = str(uuid.uuid4())[:8]
-        process_type = ""
-
-        if make_val == "Apple":
-            # Apple 命名规范: IMG_XXXX.MOV
-            if random.random() < 0.8:
-                target_ext = ".MOV"
-                # 原生文件名不带 UUID
-                filename = f"IMG_{random.randint(1000, 9999)}{target_ext}"
-                process_type = "Native Camera"
+        # A. 抽取设备 & 确定格式 (逻辑自洽)
+        make_val, model_val, sw_val, supported_exts = random.choice(DEVICE_DATABASE)
+        target_ext = supported_exts[0] # 严格使用设备支持的第一个格式
+        
+        # B. 生成 100% 原生防撞文件名 (无 UUID 后缀)
+        unique_id_internal = str(uuid.uuid4())[:8] # 仅用于 Exif 内部序列号
+        
+        # 碰撞检测循环：确保 IMG_XXXX.MOV 不重复
+        max_retries = 100
+        filename = ""
+        for _ in range(max_retries):
+            if make_val == "Apple":
+                # Apple: IMG_XXXX.MOV
+                if random.random() < 0.85:
+                    filename = f"IMG_{random.randint(1000, 9999)}{target_ext}"
+                else:
+                    filename = f"Video_{datetime.now().strftime('%Y%m%d')}_{random.randint(10,99)}{target_ext}"
             else:
-                target_ext = ".mp4"
-                # 导出视频通常是 "Video.mp4" 或日期
-                filename = f"Video_{datetime.now().strftime('%Y%m%d')}_{random.randint(10, 99)}{target_ext}"
-                process_type = "Editor Export"
-        else:
-            # Android 命名规范: 20260213_160000.mp4
-            target_ext = ".mp4"
-            date_str = datetime.now().strftime('%Y%m%d')
-            time_str = datetime.now().strftime('%H%M%S')
-
-            if random.random() < 0.8:
-                filename = f"{date_str}_{time_str}{target_ext}"
-                process_type = "Native Camera"
-            else:
-                filename = f"Edit_{date_str}{target_ext}"
-                process_type = "Editor Export"
+                # Android: YYYYMMDD_HHMMSS.mp4
+                dt_str = datetime.now().strftime('%Y%m%d_%H%M%S')
+                filename = f"{dt_str}{target_ext}"
+            
+            # 检查文件是否存在
+            if not (output_dir / filename).exists():
+                break
+            # 如果存在，休眠 1ms 重试生成
+            time.sleep(0.001)
 
         output_file = output_dir / filename
-        # ==========================================
-        # V3 终极音频链 (请确保这段代码在 try 缩进内)
-        # ==========================================
-        pitch_factor = random.uniform(0.98, 1.02)
-        h_gain = round(random.uniform(3, 5), 2)
-        e_delay = round(random.uniform(25, 45), 4)
-        e_decay = round(random.uniform(0.1, 0.15), 2)
 
+        # --- C. 音频指纹 (引入非线性变速) ---
+        # 1.002 倍速微调，模拟硬件时钟漂移
+        speed_jitter = random.uniform(0.998, 1.002) 
+        h_gain = round(random.uniform(3, 8), 2)
+        e_delay = round(random.uniform(0.025, 0.05), 4) # 25ms - 50ms (真实环境回声)
+        
         ap = (
-
-            f"anequalizer=c0 f=18000 w=2000 g={h_gain},"
-            f"aecho=1.0:0.3:{e_delay}:{e_decay},"
-            f"asetrate=44100*{pitch_factor:.5f},"
-            f"atempo={1 / pitch_factor:.5f},"
-            f"aresample=44100,"
-            f"dynaudnorm=f=150:g=15:p=0.9:m=10.0"
+            f"anequalizer=c0 f=18000 w=2000 g={h_gain}," # 超高频底噪
+            f"aecho=1.0:0.001:{e_delay}:0.15,"           # 微弱回声
+            f"atempo={speed_jitter},"                    # 非线性变速 (关键!)
+            f"aresample=44100"                           # 强制统一采样率
         )
-
-        # --- 帧率 ---
-        target_fps = random.choice(["23.976", "29.97", "59.94"])
-
-        # --- 视觉滤镜 ---
+        
+        # --- D. 视觉滤镜 ---
+        target_fps = random.choice(["29.97", "30", "59.94"]) 
         vf = ",".join(get_ultimate_visual_chain())
 
-        # D. FFmpeg 编码 (Fix 1: 移除 Color Flags，保持默认 SDR)
+        # --- E. FFmpeg 编码 (物理切除 Lavf) ---
         cmd = [
             FFMPEG_EXE, '-y', '-hide_banner', '-loglevel', 'error',
             '-i', str(input_file),
             '-vf', vf, '-af', ap,
             '-r', target_fps,
             '-c:v', 'libx264',
-            '-x264-params', 'no-info=1',
-            '-bsf:v', 'filter_units=remove_types=6',  # 核心: 移除 SEI
+            '-x264-params', 'no-info=1',             # 阻止 x264 写入信息
+            '-bsf:v', 'filter_units=remove_types=6', # 移除 SEI
             '-crf', str(random.randint(19, 23)),
             '-preset', 'fast',
-            '-bitexact',
-            '-map_metadata', '-1',
-            '-c:a', 'aac',
-            '-ar', random.choice(['44100', '48000']),
-            '-b:a', f'{random.randint(128, 192)}k',
+            '-bitexact',                             # 移除 Lavf 版本号
+            '-map_metadata', '-1',                   # 清除原始元数据
+            '-c:a', 'aac', 
+            '-ar', '44100',                          # 严格锁定 44100
+            '-b:a', '192k',
             str(output_file)
         ]
-
+        
         subprocess.run(cmd, check=True)
 
         # -------------------------------------------------
-        # E. Exif & GPS 注入 (深度品牌伪装)
+        # F. Exif 深度伪装 (God Mode 核心：修复 0000 和 Lavc)
         # -------------------------------------------------
         target_now = datetime.now(timezone.utc) + timedelta(hours=offset)
         cap_dt = target_now - timedelta(minutes=random.randint(60, 1440))
+        # 格式必须严格匹配 ExifTool 要求: YYYY:mm:dd HH:MM:SS
         ts = cap_dt.strftime(f'%Y:%m:%d %H:%M:%S{"+" if offset >= 0 else "-"}{abs(offset):02d}:00')
 
-        # GPS 坐标
-        lat_jitter = random.uniform(-0.02, 0.02)
-        lon_jitter = random.uniform(-0.02, 0.02)
-        final_lat = base_lat + lat_jitter
-        final_lon = base_lon + lon_jitter
+        # GPS 坐标抖动
+        final_lat = base_lat + random.uniform(-0.02, 0.02)
+        final_lon = base_lon + random.uniform(-0.02, 0.02)
         lat_ref = "N" if final_lat >= 0 else "S"
         lon_ref = "E" if final_lon >= 0 else "W"
 
-        # 品牌伪装标签
-        anti_forensics_tags = []
+        # 品牌原子伪装 (Atomic Level Mimicry)
+        atom_tags = []
         if make_val == "Apple":
-            anti_forensics_tags = [
-                "-MajorBrand=qt",
+            # 伪装成 QuickTime 容器
+            atom_tags = [
+                "-MajorBrand=qt  ",   
                 "-MinorVersion=0.0.0",
-                "-CompatibleBrands=qt",
-                "-CompressorName=H.264",
-                "-VendorID=apple",
-                "-Encoder=",
+                "-CompatibleBrands=qt  ",
+                "-CompressorName=H.264",      # 覆盖 Lavc libx264
                 "-HandlerVendorID=apple",
-                "-HandlerDescription=Core Media Video"
+                "-Make=Apple",
+                f"-Model={model_val}",
+                f"-Software={sw_val}"
             ]
         else:
-            anti_forensics_tags = [
+            # 伪装成 Android MP4 容器
+            atom_tags = [
                 "-MajorBrand=mp42",
                 "-MinorVersion=0.0.0",
                 "-CompatibleBrands=mp42isom",
-                "-CompressorName=",
-                "-VendorID=",
-                "-Encoder=",
-                "-HandlerVendorID=",
-                "-HandlerDescription=VideoHandle"
+                "-CompressorName=",           # Android 通常不写这个，强制删除
+                "-HandlerVendorID=",          # 删除 Handler Vendor
+                f"-Make={make_val}",
+                f"-Model={model_val}",
+                f"-Software={sw_val}"
             ]
 
-        exif_base_cmd = [
+        exif_cmd = [
             EXIFTOOL_EXE, '-overwrite_original', '-api', 'LargeFileSupport=1',
-            f"-Make={make_val}",
-            f"-Model={model_val}",
-            f"-Software={sw_val}",
+            # 1. 基础原子标签
+            *atom_tags,
+            
+            # 2. 时间戳全覆盖 (修复 0000 问题)
             f"-CreateDate={ts}",
             f"-ModifyDate={ts}",
+            f"-TrackCreateDate={ts}",
+            f"-TrackModifyDate={ts}",
+            f"-MediaCreateDate={ts}",
+            f"-MediaModifyDate={ts}",
             f"-DateTimeOriginal={ts}",
-            f"-InternalSerialNumber={unique_id}",  # 序列号藏在内部
+            f"-CreationDate={ts}", # Apple 特有
+            
+            # 3. 硬件信息
+            f"-InternalSerialNumber={unique_id_internal}",
             f"-VideoFrameRate={target_fps}",
             f"-GPSLatitude={abs(final_lat)}",
             f"-GPSLatitudeRef={lat_ref}",
             f"-GPSLongitude={abs(final_lon)}",
             f"-GPSLongitudeRef={lon_ref}",
+            
+            # 4. [关键] 清除工具痕迹
+            "-XMPToolkit=",     # 删除 ExifTool 签名
+            "-Encoder=",        # 删除编码器标记
+            "-Warning=",        # 清除警告信息
+            
+            str(output_file)
         ]
-
-        # 执行写入
-        full_exif_cmd = exif_base_cmd + anti_forensics_tags + [str(output_file)]
-
-        result = subprocess.run(full_exif_cmd, capture_output=True, text=True)
+        
+        # 执行 ExifTool
+        result = subprocess.run(exif_cmd, capture_output=True, text=True)
         if result.returncode != 0:
-            print(f"[!] Warning: Exif write simplified due to error: {result.stderr}")
-            subprocess.run(exif_base_cmd + [str(output_file)])
+            # 如果写入失败，抛出异常，不要静默失败
+            raise Exception(f"ExifTool Error: {result.stderr}")
 
-        # F. 文件时间同步
+        # G. 二进制噪声注入 (Hash 免疫)
+        # 在文件尾部追加 16-64 字节的随机数据
+        with open(output_file, "ab") as f:
+            f.write(os.urandom(random.randint(16, 64)))
+
+        # H. 文件系统时间同步
         os.utime(output_file, (cap_dt.timestamp(), cap_dt.timestamp()))
-        print(f"[+] 成功: {filename} [{process_type}] | {model_val} | 去黑边: ✅")
+        print(f"[+] 成功: {filename} | {model_val} | 采样: 44100 | Lavc: 已擦除")
         return True
 
     except Exception as e:
         print(f"[!] 错误 {input_file}: {e}")
         return False
 
-
 # ==========================================
 # 5. 主程序
 # ==========================================
 def main():
     freeze_support()
-    print("--- PolaFlow Anti-Forensic Engine v28.0 (Final) ---")
-
-    region_data = select_timezone_visual()
-
+    print("--- PolaFlow v29.0 God Mode (Final) ---")
+    
+    region_data = select_timezone_visual() 
+    
     if region_data is not None:
         in_p, out_p = Path("./raw"), Path("./output")
-        in_p.mkdir(exist_ok=True);
-        out_p.mkdir(exist_ok=True)
-
+        in_p.mkdir(exist_ok=True); out_p.mkdir(exist_ok=True)
+        
         raw_files = [f for f in in_p.glob("*.*") if f.suffix.lower() in ('.mp4', '.mov', '.m4v', '.webm')]
         if not raw_files:
             print("[!] raw 文件夹无视频。")
             return
 
         tasks = [(f, out_p, region_data) for f in raw_files]
-        # 考虑到 dctdnoiz 的极高负载，建议保守设置并发数
-        # 如果是 8 核 CPU，建议只开 4 个进程，或者给 FFmpeg 限制线程
-        cpu_cores = max(1, int(os.cpu_count() / 2))
-
+        cpu_cores = max(1, os.cpu_count() - 1)
+        
         print(f"[*] 引擎启动 | 核心: {cpu_cores} | 任务: {len(tasks)}")
-
+        
         with Pool(cpu_cores) as pool:
             pool.starmap(mutate_video, tasks)
-
+            
         print("\n[+] 所有任务处理完成。")
         input("按 Enter 键退出...")
-
 
 if __name__ == "__main__":
     main()
